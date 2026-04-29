@@ -47,3 +47,4 @@ archives/
 .DS_Store
 
 instructions.md
+scratch_parse.py

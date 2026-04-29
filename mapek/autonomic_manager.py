@@ -38,9 +38,18 @@ class AutonomicManager:
         
     def process_feedback(self, problem: Dict[str, Any], code: str, context: List[float], workflow: List[str]):
         """Processes the feedback after the visible tests are run to update the Knowledge base."""
-        # Evaluate execution correctness on visible tests
-        visible_tests = problem.get('public_tests', {})
-        acc = self.monitor.evaluate_code(code, visible_tests)
+        # Evaluate execution correctness on private tests (True Objective)
+        # Using public tests caused Reward Hacking. We use a subset of private tests 
+        # from the training split to teach the Bandit about edge cases without data leakage.
+        private_tests = problem.get('private_tests', {})
+        
+        # Cap to 5 private tests to prevent massive sandbox timeout delays during training
+        tests_to_run = {
+            'input': private_tests.get('input', [])[:5],
+            'output': private_tests.get('output', [])[:5]
+        }
+        
+        acc = self.monitor.evaluate_code(code, tests_to_run)
         
         latencies = self.monitor.node_latencies.copy()
         
