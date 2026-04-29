@@ -35,7 +35,7 @@ def run_experiment(policy: str, num_train: int, num_test: int, run_idx: int):
     all_keys = all_nodes + pipeline_names
     
     # Initialize components
-    knowledge = KnowledgeBase(db_path=f"data/knowledge_{policy}_{run_idx}.json", d=3, nodes=all_keys)
+    knowledge = KnowledgeBase(db_path=f"data/knowledge_{policy}_{run_idx}.json", d=8, nodes=all_keys)
     manager = AutonomicManager(knowledge, pipelines, policy=policy)
     
     train_handler = CodeContestsHandler(split="train")
