@@ -30,8 +30,12 @@ def run_experiment(policy: str, num_train: int, num_test: int, run_idx: int):
     
     pipelines, all_nodes = get_all_pipelines()
     
+    # Generate pipeline-level arms for linucb
+    pipeline_names = ["_".join(p) for p in pipelines]
+    all_keys = all_nodes + pipeline_names
+    
     # Initialize components
-    knowledge = KnowledgeBase(db_path=f"data/knowledge_{policy}_{run_idx}.json", d=3, nodes=all_nodes)
+    knowledge = KnowledgeBase(db_path=f"data/knowledge_{policy}_{run_idx}.json", d=3, nodes=all_keys)
     manager = AutonomicManager(knowledge, pipelines, policy=policy)
     
     train_handler = CodeContestsHandler(split="train")

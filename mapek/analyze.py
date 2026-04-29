@@ -1,6 +1,7 @@
 import numpy as np
 from typing import List, Dict, Any
 from mapek.knowledge import KnowledgeBase
+import random
 
 class Analyze:
     """Analyzes context, computes rewards, and detects if an adaptation is needed."""
@@ -14,22 +15,36 @@ class Analyze:
         p = theta.T @ x_vec + kb.alpha * np.sqrt(x_vec.T @ A_inv @ x_vec)
         return float(p[0, 0])
 
-    def detect_symptoms(self, context: List[float], kb: KnowledgeBase) -> Dict[str, Any]:
+    def detect_symptoms(self, context: List[float], kb: KnowledgeBase, policy: str) -> Dict[str, Any]:
         """
-        Determines if adaptation is needed by comparing the expected reward (UCB) 
-        of the current pipeline against all other pipelines.
+        Determines if adaptation is needed based on the active policy logic.
         """
         x_vec = np.array(context).reshape((-1, 1))
         
-        # Calculate expected reward (UCB) for current active pipeline
-        current_ucb = sum(self._get_node_ucb(node, x_vec, kb) for node in kb.current_pipeline)
+        if policy == "epsilon_greedy":
+            if random.random() < 0.1:
+                # 10% chance to pick a completely random pipeline
+                best_pipeline = random.choice(self.pipelines)
+                if best_pipeline != kb.current_pipeline:
+                    return {"adaptation_needed": True, "new_pipeline": best_pipeline}
+                return {"adaptation_needed": False}
+            else:
+                # 90% chance to exploit using TopoMAB logic
+                policy = "topomab"
+                
+        max_ucb = -float('inf')
+        best_pipeline = None
         
-        best_pipeline = kb.current_pipeline
-        max_ucb = current_ucb
-        
-        # Check if any other pipeline has a HIGHER expected reward
+        # Check expected reward for all pipelines
         for pipeline in self.pipelines:
-            pipeline_ucb = sum(self._get_node_ucb(node, x_vec, kb) for node in pipeline)
+            if policy == "topomab":
+                # Semi-bandit: Sum of individual node UCBs
+                pipeline_ucb = sum(self._get_node_ucb(node, x_vec, kb) for node in pipeline)
+            elif policy == "linucb":
+                # Standard bandit: The pipeline itself is treated as a single arm
+                pipeline_name = "_".join(pipeline)
+                pipeline_ucb = self._get_node_ucb(pipeline_name, x_vec, kb)
+                
             if pipeline_ucb > max_ucb:
                 max_ucb = pipeline_ucb
                 best_pipeline = pipeline
@@ -51,11 +66,18 @@ class Analyze:
         reward = kb.w_acc * accuracy - kb.w_lat * norm_lat
         return reward
 
-    def update_knowledge(self, context: List[float], pipeline: List[str], reward: float, kb: KnowledgeBase):
-        """Updates internal models in the Knowledge Base based on Semi-Bandit feedback."""
+    def update_knowledge(self, context: List[float], pipeline: List[str], reward: float, kb: KnowledgeBase, policy: str):
+        """Updates internal models in the Knowledge Base."""
         x_vec = np.array(context).reshape((-1, 1))
         
-        for node in pipeline:
-            node_reward = reward / len(pipeline)
-            kb.A[node] += x_vec @ x_vec.T
-            kb.b[node] += node_reward * x_vec
+        if policy in ["topomab", "epsilon_greedy"]:
+            # Semi-bandit feedback: Apportion reward to the specific nodes used
+            for node in pipeline:
+                node_reward = reward / len(pipeline)
+                kb.A[node] += x_vec @ x_vec.T
+                kb.b[node] += node_reward * x_vec
+        elif policy == "linucb":
+            # Standard bandit feedback: Update the entire pipeline arm
+            pipeline_name = "_".join(pipeline)
+            kb.A[pipeline_name] += x_vec @ x_vec.T
+            kb.b[pipeline_name] += reward * x_vec

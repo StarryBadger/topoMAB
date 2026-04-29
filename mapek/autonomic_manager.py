@@ -23,8 +23,8 @@ class AutonomicManager:
         context = self.monitor.extract_context(problem)
         
         # 2. Analyze checks if adaptation is needed (is current pipeline still best?)
-        if self.policy == "topomab":
-            symptoms = self.analyze.detect_symptoms(context, self.knowledge)
+        if self.policy in ["topomab", "linucb", "epsilon_greedy"]:
+            symptoms = self.analyze.detect_symptoms(context, self.knowledge, self.policy)
         else:
             symptoms = self._static_policy_symptoms(context)
             
@@ -47,8 +47,8 @@ class AutonomicManager:
         # 5/6. Analyze calculates reward and updates learning models in Knowledge Base
         reward = self.analyze.calculate_reward(acc, latencies, self.knowledge)
         
-        if self.policy == "topomab":
-            self.analyze.update_knowledge(context, workflow, reward, self.knowledge)
+        if self.policy in ["topomab", "linucb", "epsilon_greedy"]:
+            self.analyze.update_knowledge(context, workflow, reward, self.knowledge, self.policy)
             
         self.knowledge.log_interaction(
             problem.get("name", "N/A"), context, workflow, 

@@ -44,3 +44,5 @@ data/*.json
 *.swp
 *.swo
 .DS_Store
+
+instructions.md
