@@ -41,18 +41,25 @@ def run_experiment(policy: str, num_train: int, num_test: int, run_idx: int):
     train_handler = CodeContestsHandler(split="train")
     test_handler = CodeContestsHandler(split="valid")
     
+    # Determine if this policy actually learns anything
+    DO_NOT_LEARN_POLICIES = ["static_fastest", "static_most_accurate", "random"]
+    skip_learning = policy in DO_NOT_LEARN_POLICIES
+    
     # Phase 1: Online Learning Simulation
-    print("Phase 1: Online Learning")
-    for i in tqdm(range(num_train)):
-        problem = train_handler.get_next_problem()
-        if not problem:
-            break
+    if not skip_learning:
+        print("Phase 1: Online Learning")
+        for i in tqdm(range(num_train)):
+            problem = train_handler.get_next_problem()
+            if not problem:
+                break
+                
+            # MAPE-K Event Loop Handles Request
+            code, context, workflow = manager.handle_request(problem)
             
-        # MAPE-K Event Loop Handles Request
-        code, context, workflow = manager.handle_request(problem)
-        
-        # Reward generation and Knowledge update based on visible tests
-        manager.process_feedback(problem, code, context, workflow)
+            # Reward generation and Knowledge update based on visible tests
+            manager.process_feedback(problem, code, context, workflow)
+    else:
+        print(f"Phase 1: Online Learning (Skipped - {policy} does not learn)")
         
     # Phase 2: Final Scoring (Empirical Study)
     print("Phase 2: Evaluation on Hidden Tests")
