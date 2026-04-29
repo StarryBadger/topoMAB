@@ -96,7 +96,7 @@ def run_experiment(policy: str, num_train: int, num_test: int, run_idx: int):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run TopoMAB Experiments")
     parser.add_argument("--policy", type=str, default="topomab", help="Policy to run")
-    parser.add_argument("--train", type=int, default=50, help="Number of train problems")
+    parser.add_argument("--train", type=int, default=200, help="Number of train problems")
     parser.add_argument("--test", type=int, default=10, help="Number of test problems")
     parser.add_argument("--runs", type=int, default=1, help="Number of times to run for averaging")
     

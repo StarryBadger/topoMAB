@@ -11,7 +11,7 @@ class Monitor:
 
     def extract_context(self, problem: Dict[str, Any]) -> List[float]:
         """Extracts context features Xt from problem."""
-        desc = problem.get('description', '')
+        desc = problem.get('description', '').lower()
         desc_len = len(desc)
         
         time_limit_dict = problem.get('time_limit', {})
@@ -19,7 +19,12 @@ class Monitor:
         
         difficulty = float(problem.get('difficulty', 1))
         
-        return [desc_len / 5000.0, time_limit / 5.0, difficulty / 5.0]
+        # Keyword features (0.0 or 1.0)
+        keywords = ["array", "graph", "math", "tree", "dynamic"]
+        kw_features = [1.0 if kw in desc else 0.0 for kw in keywords]
+        
+        base_features = [desc_len / 5000.0, time_limit / 5.0, difficulty / 5.0]
+        return base_features + kw_features
 
     def start_timer(self, node_name: str) -> float:
         return time.time()

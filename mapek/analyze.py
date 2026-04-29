@@ -12,7 +12,12 @@ class Analyze:
     def _get_node_ucb(self, node: str, x_vec: np.ndarray, kb: KnowledgeBase) -> float:
         A_inv = np.linalg.inv(kb.A[node])
         theta = A_inv @ kb.b[node]
-        p = theta.T @ x_vec + kb.alpha * np.sqrt(x_vec.T @ A_inv @ x_vec)
+        
+        # Dynamic Decaying Exploration
+        t = max(1, getattr(kb, 'timestep', 1))
+        dynamic_alpha = kb.alpha / np.sqrt(t)
+        
+        p = theta.T @ x_vec + dynamic_alpha * np.sqrt(x_vec.T @ A_inv @ x_vec)
         return float(p[0, 0])
 
     def detect_symptoms(self, context: List[float], kb: KnowledgeBase, policy: str) -> Dict[str, Any]:
@@ -57,13 +62,19 @@ class Analyze:
         return {"adaptation_needed": False}
 
     def calculate_reward(self, accuracy: float, node_latencies: Dict[str, float], kb: KnowledgeBase) -> float:
-        """Calculates scalar reward using multi-objective formulation."""
+        """Calculates scalar reward using asymmetric multi-objective formulation."""
         total_latency = sum(node_latencies.values())
         if total_latency > kb.max_lat:
             kb.max_lat = total_latency
         
         norm_lat = total_latency / kb.max_lat if kb.max_lat > 0 else 0
-        reward = kb.w_acc * accuracy - kb.w_lat * norm_lat
+        
+        # Asymmetric Reward Shaping
+        if accuracy == 0.0:
+            reward = -1.0 # Flat penalty for failing
+        else:
+            reward = 10.0 * accuracy - kb.w_lat * norm_lat
+            
         return reward
 
     def update_knowledge(self, context: List[float], pipeline: List[str], reward: float, kb: KnowledgeBase, policy: str):
@@ -81,3 +92,7 @@ class Analyze:
             pipeline_name = "_".join(pipeline)
             kb.A[pipeline_name] += x_vec @ x_vec.T
             kb.b[pipeline_name] += reward * x_vec
+            
+        if not hasattr(kb, 'timestep'):
+            kb.timestep = 0
+        kb.timestep += 1

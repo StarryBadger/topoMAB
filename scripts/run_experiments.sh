@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Configuration
-TRAIN_STEPS=${1:-50}
+TRAIN_STEPS=${1:-200}
 TEST_STEPS=${2:-10}
 RUNS=${3:-3}
 
