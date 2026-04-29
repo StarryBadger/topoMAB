@@ -13,11 +13,8 @@ class Analyze:
         A_inv = np.linalg.inv(kb.A[node])
         theta = A_inv @ kb.b[node]
         
-        # Dynamic Decaying Exploration
-        t = max(1, getattr(kb, 'timestep', 1))
-        dynamic_alpha = kb.alpha / np.sqrt(t)
-        
-        p = theta.T @ x_vec + dynamic_alpha * np.sqrt(x_vec.T @ A_inv @ x_vec)
+        # Standard LinUCB exploration (A_inv already shrinks over time, no need for dynamic_alpha)
+        p = theta.T @ x_vec + kb.alpha * np.sqrt(x_vec.T @ A_inv @ x_vec)
         return float(p[0, 0])
 
     def detect_symptoms(self, context: List[float], kb: KnowledgeBase, policy: str) -> Dict[str, Any]:
@@ -71,7 +68,8 @@ class Analyze:
         
         # Asymmetric Reward Shaping
         if accuracy == 0.0:
-            reward = -1.0 # Flat penalty for failing
+            # Penalize failure, but STILL penalize latency so it learns to fail fast
+            reward = -1.0 - kb.w_lat * norm_lat
         else:
             reward = 10.0 * accuracy - kb.w_lat * norm_lat
             
